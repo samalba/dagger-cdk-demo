@@ -5,6 +5,9 @@ go 1.19
 require (
 	dagger.io/dagger v0.4.5
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.63.2
+	github.com/aws/aws-sdk-go-v2/config v1.18.12
+	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.26.2
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.18.3
 	github.com/aws/constructs-go/constructs/v10 v10.1.235
 	github.com/aws/jsii-runtime-go v1.74.0
 )
@@ -14,13 +17,11 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/adrg/xdg v0.4.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.17.4 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.18.12 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.12 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.22 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.28 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.22 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.29 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.26.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.22 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.12.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.1 // indirect

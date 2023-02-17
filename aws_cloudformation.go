@@ -113,6 +113,7 @@ func (c *CfnClient) DeployStack(ctx context.Context, stackName, templateBody str
 	return &stack, nil
 }
 
+// FormatStackOutputs converts stack outputs into a map of string for easy printing
 func FormatStackOutputs(outputs []types.Output) map[string]string {
 	outs := map[string]string{}
 
