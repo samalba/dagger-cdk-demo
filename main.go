@@ -9,7 +9,7 @@ import (
 	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 )
 
-func build(ctx context.Context, registryURI, registryAuthToken string) (string, error) {
+func build(ctx context.Context, registryURI, registryUsername, registryPassword string) (string, error) {
 	// initialize Dagger client
 	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
 	if err != nil {
@@ -45,22 +45,14 @@ func build(ctx context.Context, registryURI, registryAuthToken string) (string, 
 
 	// FIXME: This is a workaround until there is a better way to create a secret from the API
 	registrySecret := client.Container().WithNewFile("/secret", dagger.ContainerWithNewFileOpts{
-		Contents:    registryAuthToken,
+		Contents:    registryPassword,
 		Permissions: 0o400,
 	}).File("/secret").Secret()
-
-	// stdout, err := client.Container().From("alpine").WithMountedSecret("/secret", registrySecret).WithExec([]string{
-	// 	"sh", "-c", "cat /secret",
-	// }).Stdout(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("######################\n%s\n", stdout)
 
 	return client.Container().
 		From("nginx").
 		WithDirectory("/usr/src/nginx", buildDir).
-		WithRegistryAuth("125635003186.dkr.ecr.us-west-1.amazonaws.com", "AWS", registrySecret).
+		WithRegistryAuth("125635003186.dkr.ecr.us-west-1.amazonaws.com", registryUsername, registrySecret).
 		Publish(ctx, registryURI)
 }
 
@@ -68,6 +60,11 @@ func main() {
 	ctx := context.Background()
 
 	ecrAuthToken, err := GetECRAuthorizationToken(ctx, "us-west-1")
+	if err != nil {
+		panic(err)
+	}
+
+	registryUser, registryPasswd, err := ECRTokenToUsernamePassword(ecrAuthToken)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +86,7 @@ func main() {
 
 	ecrOutputs := FormatStackOutputs(stack.Outputs)
 
-	ref, err := build(ctx, ecrOutputs["RepositoryUri"], ecrAuthToken)
+	ref, err := build(ctx, ecrOutputs["RepositoryUri"], registryUser, registryPasswd)
 	if err != nil {
 		panic(err)
 	}

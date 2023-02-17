@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	cdk "github.com/aws/aws-cdk-go/awscdk/v2"
 	ecr "github.com/aws/aws-cdk-go/awscdk/v2/awsecr"
@@ -61,4 +63,19 @@ func GetECRAuthorizationToken(ctx context.Context, region string) (string, error
 
 	authToken := *out.AuthorizationData[0].AuthorizationToken
 	return authToken, nil
+}
+
+// Converts an ECR auth token to username / password
+func ECRTokenToUsernamePassword(token string) (string, string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return "", "", err
+	}
+
+	split := strings.SplitN(string(decoded), ":", 2)
+	if len(split) < 1 {
+		return "", "", fmt.Errorf("invalid base64 decoded data")
+	}
+
+	return split[0], split[1], nil
 }
