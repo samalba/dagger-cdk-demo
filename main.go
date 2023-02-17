@@ -52,7 +52,23 @@ func build() {
 }
 
 func main() {
-	// ctx := context.Background()
+	ctx := context.Background()
+
+	ecrStack, err := NewECRStack("TestECRStack", "dagger-cdk-demo")
+	if err != nil {
+		panic(err)
+	}
+
+	c, err := NewCfnClient(ctx, "us-west-1")
+	if err != nil {
+		panic(err)
+	}
+
+	stack, err := c.DeployStack(ctx, "TestECRStack", ecrStack, false)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Outputs:", FormatStackOutputs(stack.Outputs))
 
 	// // initialize Dagger client
 	// client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
@@ -70,5 +86,6 @@ func main() {
 
 	// fmt.Println(stdout)
 
-	deployToECS("amazon/amazon-ecs-sample")
+	// deployToECS("amazon/amazon-ecs-sample")
+
 }
