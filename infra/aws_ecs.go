@@ -12,7 +12,6 @@ import (
 func NewECSStack(scope constructs.Construct, id string, containerImage string) cdk.Stack {
 	stack := cdk.NewStack(scope, &id, &cdk.StackProps{
 		Description: jsii.String("ECS/Fargate stack for dagger/CDK demo"),
-		Env:         cdkEnvironment(),
 	},
 	)
 

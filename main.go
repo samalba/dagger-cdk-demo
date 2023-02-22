@@ -9,14 +9,7 @@ import (
 	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 )
 
-func build(ctx context.Context, registryURI, registryUsername, registryPassword string) (string, error) {
-	// initialize Dagger client
-	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
-	if err != nil {
-		panic(err)
-	}
-	defer client.Close()
-
+func build(ctx context.Context, client *dagger.Client, registry *RegistryInfo) (string, error) {
 	nodeCache := client.CacheVolume("node")
 
 	// // Read the source code from local directory
@@ -45,53 +38,39 @@ func build(ctx context.Context, registryURI, registryUsername, registryPassword 
 
 	// FIXME: This is a workaround until there is a better way to create a secret from the API
 	registrySecret := client.Container().WithNewFile("/secret", dagger.ContainerWithNewFileOpts{
-		Contents:    registryPassword,
+		Contents:    registry.password,
 		Permissions: 0o400,
 	}).File("/secret").Secret()
 
 	return client.Container().
 		From("nginx").
 		WithDirectory("/usr/src/nginx", buildDir).
-		WithRegistryAuth("125635003186.dkr.ecr.us-west-1.amazonaws.com", registryUsername, registrySecret).
-		Publish(ctx, registryURI)
+		WithRegistryAuth("125635003186.dkr.ecr.us-west-1.amazonaws.com", registry.username, registrySecret).
+		Publish(ctx, registry.uri)
 }
 
 func main() {
 	ctx := context.Background()
 
-	ecrAuthToken, err := GetECRAuthorizationToken(ctx, "us-west-1")
+	// initialize Dagger client
+	client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
+	if err != nil {
+		panic(err)
+	}
+	defer client.Close()
+
+	awsClient, err := NewAWSClient(ctx, "us-west-1")
 	if err != nil {
 		panic(err)
 	}
 
-	registryUser, registryPasswd, err := ECRTokenToUsernamePassword(ecrAuthToken)
+	registry := initRegistry(ctx, client, awsClient)
+	imageRef, err := build(ctx, client, registry)
 	if err != nil {
 		panic(err)
 	}
 
-	ecrStack, err := NewECRStack("TestECRStack", "dagger-cdk-demo")
-	if err != nil {
-		panic(err)
-	}
-
-	c, err := NewCfnClient(ctx, "us-west-1")
-	if err != nil {
-		panic(err)
-	}
-
-	stack, err := c.DeployStack(ctx, "TestECRStack", ecrStack, false)
-	if err != nil {
-		panic(err)
-	}
-
-	ecrOutputs := FormatStackOutputs(stack.Outputs)
-
-	ref, err := build(ctx, ecrOutputs["RepositoryUri"], registryUser, registryPasswd)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Pushed image to", ref)
+	fmt.Println("Published image to", imageRef)
 
 	// // initialize Dagger client
 	// client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))

@@ -5,12 +5,15 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
+	"dagger.io/dagger"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/aws/jsii-runtime-go"
 )
 
 type AWSClient struct {
@@ -36,16 +39,22 @@ func NewAWSClient(ctx context.Context, region string) (*AWSClient, error) {
 }
 
 func (c *AWSClient) GetCfnStackOutputs(ctx context.Context, stackName string) (map[string]string, error) {
-	panic("not implemented")
+	out, err := c.cCfn.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
+		StackName: jsii.String(stackName),
+	})
 
-	// FIXME: implement
-	// out, err := c.client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
-	// 	StackName: jsii.String(stackName),
-	// })
-	// stack := out.Stacks[0]
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out.Stacks) < 1 {
+		return nil, fmt.Errorf("cannot DescribeStack name %q", stackName)
+	}
+
+	stack := out.Stacks[0]
 	// status := string(stack.StackStatus)
 
-	return nil, nil
+	return FormatStackOutputs(stack.Outputs), nil
 }
 
 func (c *AWSClient) GetECRAuthorizationToken(ctx context.Context) (string, error) {
@@ -63,8 +72,13 @@ func (c *AWSClient) GetECRAuthorizationToken(ctx context.Context) (string, error
 	return authToken, nil
 }
 
-// Converts an ECR auth token to username / password
-func ECRTokenToUsernamePassword(token string) (string, string, error) {
+// GetECRUsernamePassword fetches ECR auth token and converts it to username / password
+func (c *AWSClient) GetECRUsernamePassword(ctx context.Context) (string, string, error) {
+	token, err := c.GetECRAuthorizationToken(ctx)
+	if err != nil {
+		return "", "", err
+	}
+
 	decoded, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		return "", "", err
@@ -87,4 +101,36 @@ func FormatStackOutputs(outputs []types.Output) map[string]string {
 	}
 
 	return outs
+}
+
+// cdkDeployStack deploys a CloudFormation stack via the CDK cli
+func (c *AWSClient) cdkDeployStack(ctx context.Context, client *dagger.Client, stackName string) (map[string]string, error) {
+	cdkCode := client.Host().Directory("./infra", dagger.HostDirectoryOpts{
+		Exclude: []string{"cdk.out/", "infra"},
+	})
+
+	awsConfig := client.Host().Directory(os.ExpandEnv("${HOME}/.aws"))
+
+	exitCode, err := client.Container().From("samalba/aws-cdk:2.65.0").
+		WithEnvVariable("AWS_REGION", c.region).
+		WithEnvVariable("AWS_DEFAULT_REGION", c.region).
+		WithMountedDirectory("/opt/app", cdkCode).
+		WithMountedDirectory("/root/.aws", awsConfig).
+		WithExec([]string{"cdk", "deploy", stackName}).
+		ExitCode(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if exitCode != 0 {
+		return nil, fmt.Errorf("cdk deploy exited with code %d", exitCode)
+	}
+
+	outputs, err := c.GetCfnStackOutputs(ctx, stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	return outputs, nil
 }

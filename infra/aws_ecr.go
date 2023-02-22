@@ -13,7 +13,6 @@ import (
 func NewECRStack(scope constructs.Construct, id string, repositoryName string) cdk.Stack {
 	stack := cdk.NewStack(scope, &id, &cdk.StackProps{
 		Description: jsii.String(fmt.Sprintf("ECR stack for repository %s", repositoryName)),
-		Env:         cdkEnvironment(),
 	})
 
 	ecrRepo := ecr.NewRepository(stack, jsii.String(repositoryName), &ecr.RepositoryProps{
