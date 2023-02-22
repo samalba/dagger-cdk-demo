@@ -5,6 +5,7 @@ import (
 	ec2 "github.com/aws/aws-cdk-go/awscdk/v2/awsec2"
 	ecs "github.com/aws/aws-cdk-go/awscdk/v2/awsecs"
 	ecs_patterns "github.com/aws/aws-cdk-go/awscdk/v2/awsecspatterns"
+	iam "github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -15,6 +16,7 @@ func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 	},
 	)
 
+	// ContainerImage is passed as a stack parameter
 	containerImage := cdk.NewCfnParameter(stack, jsii.String("ContainerImage"), &cdk.CfnParameterProps{
 		Type:    jsii.String("String"),
 		Default: jsii.String("amazon/amazon-ecs-sample"),
@@ -29,10 +31,17 @@ func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 		Vpc: vpc,
 	})
 
+	// Attach a Managed Policy to allow basic operations (like ECR::GetAuthorizationToken)
+	role := iam.NewRole(stack, jsii.String("FargateContainerRole"), &iam.RoleProps{
+		AssumedBy: iam.NewServicePrincipal(jsii.String("ecs-tasks.amazonaws.com"), &iam.ServicePrincipalOpts{}),
+	})
+	role.AddManagedPolicy(iam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AmazonECSTaskExecutionRolePolicy")))
+
 	res := ecs_patterns.NewApplicationLoadBalancedFargateService(stack, jsii.String("ALBFargoService"), &ecs_patterns.ApplicationLoadBalancedFargateServiceProps{
 		Cluster: cluster,
 		TaskImageOptions: &ecs_patterns.ApplicationLoadBalancedTaskImageOptions{
-			Image: ecs.ContainerImage_FromRegistry(containerImage.ToString(), &ecs.RepositoryImageProps{}),
+			Image:         ecs.ContainerImage_FromRegistry(containerImage.ValueAsString(), &ecs.RepositoryImageProps{}),
+			ExecutionRole: role,
 		},
 	})
 

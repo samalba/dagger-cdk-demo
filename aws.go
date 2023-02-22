@@ -104,19 +104,25 @@ func FormatStackOutputs(outputs []types.Output) map[string]string {
 }
 
 // cdkDeployStack deploys a CloudFormation stack via the CDK cli
-func (c *AWSClient) cdkDeployStack(ctx context.Context, client *dagger.Client, stackName string) (map[string]string, error) {
+func (c *AWSClient) cdkDeployStack(ctx context.Context, client *dagger.Client, stackName string, stackParameters map[string]string) (map[string]string, error) {
 	cdkCode := client.Host().Directory("./infra", dagger.HostDirectoryOpts{
 		Exclude: []string{"cdk.out/", "infra"},
 	})
 
 	awsConfig := client.Host().Directory(os.ExpandEnv("${HOME}/.aws"))
 
+	cdkCommand := []string{"cdk", "deploy", "--require-approval=never", stackName}
+	// Append the stack parameters to the CLI, if there is any
+	for k, v := range stackParameters {
+		cdkCommand = append(cdkCommand, "--parameters", fmt.Sprintf("%s=%s", k, v))
+	}
+
 	exitCode, err := client.Container().From("samalba/aws-cdk:2.65.0").
 		WithEnvVariable("AWS_REGION", c.region).
 		WithEnvVariable("AWS_DEFAULT_REGION", c.region).
 		WithMountedDirectory("/opt/app", cdkCode).
 		WithMountedDirectory("/root/.aws", awsConfig).
-		WithExec([]string{"cdk", "deploy", stackName}).
+		WithExec(cdkCommand).
 		ExitCode(ctx)
 
 	if err != nil {

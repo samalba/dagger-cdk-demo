@@ -14,7 +14,7 @@ type RegistryInfo struct {
 
 // initRegistry creates and/or authenticate with an ECR repository
 func initRegistry(ctx context.Context, client *dagger.Client, awsClient *AWSClient) *RegistryInfo {
-	outputs, err := awsClient.cdkDeployStack(ctx, client, "DaggerDemoECRStack")
+	outputs, err := awsClient.cdkDeployStack(ctx, client, "DaggerDemoECRStack", nil)
 	if err != nil {
 		panic(err)
 	}

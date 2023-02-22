@@ -42,11 +42,25 @@ func build(ctx context.Context, client *dagger.Client, registry *RegistryInfo) (
 		Permissions: 0o400,
 	}).File("/secret").Secret()
 
-	return client.Container().
+	// Explicitly build for "linux/amd64" to match the target (container on Fargate)
+	return client.Container(dagger.ContainerOpts{Platform: "linux/amd64"}).
 		From("nginx").
-		WithDirectory("/usr/src/nginx", buildDir).
+		WithDirectory("/usr/share/nginx/html", buildDir).
 		WithRegistryAuth("125635003186.dkr.ecr.us-west-1.amazonaws.com", registry.username, registrySecret).
 		Publish(ctx, registry.uri)
+}
+
+func deployToECS(ctx context.Context, client *dagger.Client, awsClient *AWSClient, containerImage string) string {
+	stackParameters := map[string]string{
+		"ContainerImage": containerImage,
+	}
+
+	outputs, err := awsClient.cdkDeployStack(ctx, client, "DaggerDemoECSStack", stackParameters)
+	if err != nil {
+		panic(err)
+	}
+
+	return outputs["LoadBalancerDNS"]
 }
 
 func main() {
@@ -72,22 +86,7 @@ func main() {
 
 	fmt.Println("Published image to", imageRef)
 
-	// // initialize Dagger client
-	// client, err := dagger.Connect(ctx, dagger.WithLogOutput(os.Stdout))
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer client.Close()
+	publicDNS := deployToECS(ctx, client, awsClient, imageRef)
 
-	// alpine := client.Pipeline("TestPipeline").Container().From("alpine:3.17").WithExec([]string{"sh", "-c", "echo this is a test"})
-
-	// stdout, err := alpine.Stdout(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// fmt.Println(stdout)
-
-	// deployToECS("amazon/amazon-ecs-sample")
-
+	fmt.Printf("Deployed to http://%s/\n", publicDNS)
 }
