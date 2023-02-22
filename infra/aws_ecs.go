@@ -9,11 +9,16 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-func NewECSStack(scope constructs.Construct, id string, containerImage string) cdk.Stack {
+func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 	stack := cdk.NewStack(scope, &id, &cdk.StackProps{
 		Description: jsii.String("ECS/Fargate stack for dagger/CDK demo"),
 	},
 	)
+
+	containerImage := cdk.NewCfnParameter(stack, jsii.String("ContainerImage"), &cdk.CfnParameterProps{
+		Type:    jsii.String("String"),
+		Default: jsii.String("amazon/amazon-ecs-sample"),
+	})
 
 	// Create VPC and Cluster
 	vpc := ec2.NewVpc(stack, jsii.String("ALBFargoVpc"), &ec2.VpcProps{
@@ -27,7 +32,7 @@ func NewECSStack(scope constructs.Construct, id string, containerImage string) c
 	res := ecs_patterns.NewApplicationLoadBalancedFargateService(stack, jsii.String("ALBFargoService"), &ecs_patterns.ApplicationLoadBalancedFargateServiceProps{
 		Cluster: cluster,
 		TaskImageOptions: &ecs_patterns.ApplicationLoadBalancedTaskImageOptions{
-			Image: ecs.ContainerImage_FromRegistry(jsii.String(containerImage), &ecs.RepositoryImageProps{}),
+			Image: ecs.ContainerImage_FromRegistry(containerImage.ToString(), &ecs.RepositoryImageProps{}),
 		},
 	})
 

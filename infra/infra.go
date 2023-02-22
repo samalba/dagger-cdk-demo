@@ -11,6 +11,7 @@ func main() {
 	app := awscdk.NewApp(nil)
 
 	NewECRStack(app, "DaggerDemoECRStack", "dagger-cdk-demo")
+	NewECSStack(app, "DaggerDemoECSStack")
 
 	app.Synth(nil)
 }
