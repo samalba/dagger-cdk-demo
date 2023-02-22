@@ -13,8 +13,8 @@ func build(ctx context.Context, client *dagger.Client, registry *RegistryInfo) (
 	nodeCache := client.CacheVolume("node")
 
 	// // Read the source code from local directory
-	// sourceDir := client.Host().Directory(".", dagger.HostDirectoryOpts{
-	// 	Exclude: []string{"node_modules/", "ci/"},
+	// sourceDir := client.Host().Directory("./app", dagger.HostDirectoryOpts{
+	// 	Exclude: []string{"node_modules/"},
 	// })
 
 	// Read the source code from a remote git repository
