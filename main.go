@@ -9,6 +9,7 @@ import (
 	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 )
 
+// build reads the source code, run the test and build the app and publish it to a container registry
 func build(ctx context.Context, client *dagger.Client, registry *RegistryInfo) (string, error) {
 	nodeCache := client.CacheVolume("node")
 
@@ -50,6 +51,7 @@ func build(ctx context.Context, client *dagger.Client, registry *RegistryInfo) (
 		Publish(ctx, registry.uri)
 }
 
+// deployToECS deploys a container image to the ECS cluster
 func deployToECS(ctx context.Context, client *dagger.Client, awsClient *AWSClient, containerImage string) string {
 	stackParameters := map[string]string{
 		"ContainerImage": containerImage,
@@ -73,11 +75,13 @@ func main() {
 	}
 	defer client.Close()
 
+	// initialize AWS client
 	awsClient, err := NewAWSClient(ctx, "us-west-1")
 	if err != nil {
 		panic(err)
 	}
 
+	// init the ECR Registry using the AWS CDK
 	registry := initRegistry(ctx, client, awsClient)
 	imageRef, err := build(ctx, client, registry)
 	if err != nil {
@@ -86,6 +90,7 @@ func main() {
 
 	fmt.Println("Published image to", imageRef)
 
+	// init and deploy to ECS using the AWS CDK
 	publicDNS := deployToECS(ctx, client, awsClient, imageRef)
 
 	fmt.Printf("Deployed to http://%s/\n", publicDNS)

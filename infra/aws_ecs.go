@@ -27,6 +27,7 @@ func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 		MaxAzs: jsii.Number(2),
 	})
 
+	// Create ECS Cluster
 	cluster := ecs.NewCluster(stack, jsii.String("ALBFargoECSCluster"), &ecs.ClusterProps{
 		Vpc: vpc,
 	})
@@ -37,6 +38,7 @@ func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 	})
 	role.AddManagedPolicy(iam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("service-role/AmazonECSTaskExecutionRolePolicy")))
 
+	// Create ECS Service
 	res := ecs_patterns.NewApplicationLoadBalancedFargateService(stack, jsii.String("ALBFargoService"), &ecs_patterns.ApplicationLoadBalancedFargateServiceProps{
 		Cluster: cluster,
 		TaskImageOptions: &ecs_patterns.ApplicationLoadBalancedTaskImageOptions{
@@ -45,6 +47,7 @@ func NewECSStack(scope constructs.Construct, id string) cdk.Stack {
 		},
 	})
 
+	// Output the ALB DNS
 	cdk.NewCfnOutput(stack, jsii.String("LoadBalancerDNS"), &cdk.CfnOutputProps{Value: res.LoadBalancer().LoadBalancerDnsName()})
 
 	return stack
